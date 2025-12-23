@@ -1,21 +1,20 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 import { User as ZodUser, Task as ZodTask, Project as ZodProject } from './index';
 
-// Define Mongoose Document types that extend the Zod-inferred application types.
-export type UserDocument = ZodUser & mongoose.Document;
-export type TaskDocument = ZodTask & mongoose.Document;
-export type ProjectDocument = ZodProject & mongoose.Document;
+export interface UserDocument extends Omit<ZodUser, 'id'>, Document {
+  _id: Types.ObjectId;
+}
 
-// Define types for the raw Mongoose Schema definition, where refs are ObjectIds.
-// This resolves the compile-time type conflict.
-type TaskSchemaType = Omit<ZodTask, 'assignedTo'> & {
-  assignedTo?: mongoose.Types.ObjectId;
-};
+export interface TaskDocument extends Omit<ZodTask, 'id' | 'assignedTo'>, Document {
+  _id: Types.ObjectId;
+  assignedTo?: Types.ObjectId;
+}
 
-type ProjectSchemaType = Omit<ZodProject, 'ownerId' | 'members'> & {
-  ownerId: mongoose.Types.ObjectId;
-  members: mongoose.Types.ObjectId[];
-};
+export interface ProjectDocument extends Omit<ZodProject, 'id' | 'ownerId' | 'members'>, Document {
+  _id: Types.ObjectId;
+  ownerId: Types.ObjectId;
+  members: Types.ObjectId[];
+}
 
 const UserSchema = new Schema<UserDocument>({
   name: { type: String, required: true },
@@ -34,7 +33,7 @@ const UserSchema = new Schema<UserDocument>({
   },
 }, { timestamps: true });
 
-const TaskSchema = new Schema<TaskSchemaType, mongoose.Model<TaskDocument>, {}, {}, {}, TaskDocument>({
+const TaskSchema = new Schema<TaskDocument>({
   title: { type: String, required: true },
   description: { type: String },
   status: {
@@ -44,40 +43,42 @@ const TaskSchema = new Schema<TaskSchemaType, mongoose.Model<TaskDocument>, {}, 
   },
   priority: {
     type: String,
-    enum: ['low', 'medium', 'high', 'urgent'], // Added 'urgent'
+    enum: ['low', 'medium', 'high', 'urgent'],
     default: 'medium'
   },
   assignedTo: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    get: (v?: mongoose.Types.ObjectId) => v?.toString(),
+    default: null
   },
   subtasks: [{
-    // Sub-documents get their own _id by default in Mongoose
     title: { type: String, required: true },
-    isCompleted: { type: Boolean, default: false } // Corrected from 'completed'
+    isCompleted: { type: Boolean, default: false }
   }],
-}, { timestamps: true, toJSON: { getters: true }, toObject: { getters: true } });
+}, { 
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
-const ProjectSchema = new Schema<ProjectSchemaType, mongoose.Model<ProjectDocument>, {}, {}, {}, ProjectDocument>({
+const ProjectSchema = new Schema<ProjectDocument>({
   name: { type: String, required: true },
   slug: { type: String, required: true, unique: true },
   ownerId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    get: (v: mongoose.Types.ObjectId) => v.toString(),
+    required: true
   },
   members: [{
-    type: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      get: (v: mongoose.Types.ObjectId) => v.toString(),
-    }
+    type: Schema.Types.ObjectId,
+    ref: 'User'
   }],
-}, { timestamps: true, toJSON: { getters: true }, toObject: { getters: true } });
+}, { 
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
-// This pattern prevents model recompilation on hot reloads in a Next.js environment.
 export const User = mongoose.models.User || mongoose.model<UserDocument>('User', UserSchema);
 export const Task = mongoose.models.Task || mongoose.model<TaskDocument>('Task', TaskSchema);
 export const Project = mongoose.models.Project || mongoose.model<ProjectDocument>('Project', ProjectSchema);
