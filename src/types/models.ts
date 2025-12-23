@@ -22,13 +22,13 @@ const UserSchema = new Schema<UserDocument>({
   image: { type: String },
   settings: {
     notifications: {
-      taskMentions: { type: [String], enum: ['email', 'in-app'], default: ['in-app'] },
-      deadlineReminders: { type: [String], enum: ['email', 'in-app'], default: ['email', 'in-app'] },
+      taskMentions: { type: [String], enum: ['email', 'in-app'] },
+      deadlineReminders: { type: [String], enum: ['email', 'in-app'] },
     },
     personalization: {
-      theme: { type: String, enum: ['light', 'dark', 'system'], default: 'system' },
-      accentColor: { type: String, default: '#007AFF' },
-      sidebarDensity: { type: String, enum: ['compact', 'default', 'comfortable'], default: 'default' },
+      theme: { type: String, enum: ['light', 'dark', 'system'] },
+      accentColor: { type: String },
+      sidebarDensity: { type: String, enum: ['compact', 'default', 'comfortable'] },
     },
   },
 }, { timestamps: true });
@@ -48,8 +48,7 @@ const TaskSchema = new Schema<TaskDocument>({
   },
   assignedTo: {
     type: Schema.Types.ObjectId,
-    ref: 'User',
-    default: null
+    ref: 'User'
   },
   subtasks: [{
     title: { type: String, required: true },
